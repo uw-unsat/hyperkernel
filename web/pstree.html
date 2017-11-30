@@ -1,0 +1,136 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>pstree</title>
+</head>
+<body>
+<script src="d3.v4.min.js"></script>
+<script>
+const host = (location.protocol === "file:") ? "http://localhost:10080/" : "/";
+
+/* based on https://bl.ocks.org/d3noob/e7e37cfe0e8763cb0915dee33cc2a24b */
+function render(data, attr) {
+  // convert the flat data into a hierarchy
+  var treeData = d3.stratify()(data);
+
+  // assign the name to each node
+  treeData.each(function(d) {
+    d.name = attr[d.id].name + "(" + d.id + ")";
+    d.state = attr[d.id].state;
+  });
+
+  // set the dimensions and margins of the diagram
+  var margin = {top: 20, right: 90, bottom: 30, left: 90},
+      width = 660 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+  // declares a tree layout and assigns the size
+  var treemap = d3.tree()
+    .size([height, width]);
+
+  // assigns the data to a hierarchy using parent-child relationships
+  var nodes = d3.hierarchy(treeData, function(d) {
+    return d.children;
+  });
+
+  // maps the node data to the tree layout
+  nodes = treemap(nodes);
+
+  // append the svg object to the body of the page
+  // appends a 'group' element to 'svg'
+  // moves the 'group' element to the top left margin
+  var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom);
+  var g = svg.append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+  // adds the links between the nodes
+  var link = g.selectAll(".link")
+    .data( nodes.descendants().slice(1))
+    .enter().append("path")
+    .attr("class", "link")
+    .attr("d", function(d) {
+       return "M" + d.y + "," + d.x
+         + "C" + (d.y + d.parent.y) / 2 + "," + d.x
+         + " " + (d.y + d.parent.y) / 2 + "," + d.parent.x
+         + " " + d.parent.y + "," + d.parent.x;
+    });
+
+  // adds each node as a group
+  var node = g.selectAll(".node")
+    .data(nodes.descendants())
+    .enter().append("g")
+    .attr("class", function(d) {
+      return "node"
+        + (d.children ? " node--internal" : " node--leaf")
+        + " node--" + d.data.state; })
+    .attr("transform", function(d) {
+      return "translate(" + d.y + "," + d.x + ")"; });
+
+  // adds the circle to the node
+  node.append("circle")
+    .attr("r", 10);
+
+  // adds the text to the node
+  node.append("text")
+    .attr("dy", ".35em")
+    .attr("x", function(d) { return d.children ? -13 : 13; })
+    .style("text-anchor", function(d) {
+      return d.children ? "end" : "start"; })
+    .text(function(d) { return d.data.name; });
+}
+
+d3.request(host + "ps")
+  .post(function(error, xhr) {
+    var attr = {};
+    var data = xhr.response.trim().split('\n').splice(1).map(function(line) {
+      var pid, ppid, state, name;
+      console.log(line);
+      [pid, ppid, state, name] = line.trim().split(/\s+/);
+      if (pid === ppid)
+        ppid = null;
+      attr[pid] = {"name": name, "state": state.toLowerCase()};
+      return {"id": pid, "parentId": ppid};
+    });
+    render(data, attr);
+  });
+
+</script>
+
+<style>
+.node circle {
+  stroke: black;
+  fill: white;
+  stroke-width: 3px;
+}
+
+.node text { font: 18px sans-serif; }
+
+.node--internal text {
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 2px;
+}
+
+.node--runnable circle {
+  fill: cornflowerblue;
+}
+
+.node--running circle {
+  fill: lightgreen;
+}
+
+.node--sleeping circle {
+  fill: gray;
+}
+</style>
+</body>
+</html>

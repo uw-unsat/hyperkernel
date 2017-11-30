@@ -1,0 +1,202 @@
+HV6_BIN := $(O)/hv6.bin
+HV6_ELF := $(basename $(HV6_BIN)).elf
+HV6_ASM := $(basename $(HV6_BIN)).asm
+HV6_ISO := $(basename $(HV6_BIN)).iso
+
+HV6_LLS :=                     \
+        $(O)/hv6/device.ll     \
+        $(O)/hv6/fd.ll         \
+        $(O)/hv6/invariants.ll \
+        $(O)/hv6/ioport.ll     \
+        $(O)/hv6/ipc.ll        \
+        $(O)/hv6/mmap.ll       \
+        $(O)/hv6/proc.ll       \
+        $(O)/hv6/syscall.ll    \
+        $(O)/hv6/sysctl.ll     \
+        $(O)/hv6/vm.ll         \
+
+HV6_KERNEL_SRCS :=             \
+        hv6/device.c           \
+        hv6/fd.c               \
+        hv6/initbin.S          \
+        hv6/ioport.c           \
+        hv6/ipc.c              \
+        hv6/main.c             \
+        hv6/mmap.c             \
+        hv6/proc.c             \
+        hv6/vm.c               \
+        hv6/sysctl.c           \
+        hv6/syscall.c          \
+        hv6/invariants.c       \
+        lib/bootmem.c          \
+        lib/console.c          \
+        lib/panic.c            \
+        lib/stdio.c            \
+        lib/string.c           \
+        lib/syslog.c           \
+
+HV6_KERNEL_SRCS +=             \
+        hv6/trap.c             \
+        hv6/trap_entry.S       \
+        hv6/entry.S            \
+
+HV6_KERNEL_SRCS +=             \
+        kernel/amd_iommu.c     \
+        kernel/fpu.c           \
+        kernel/pmap.c          \
+        kernel/locore.S        \
+        kernel/cpuid.c         \
+        kernel/hvm.c           \
+        kernel/ioapic.c        \
+        kernel/iommu.c         \
+        kernel/intel_iommu.c   \
+        kernel/mtrr.c          \
+        kernel/pic.c           \
+        kernel/svm.c           \
+        kernel/svm_entry.S     \
+        kernel/tsc.c           \
+        kernel/vmx.c           \
+        kernel/vmx_entry.S     \
+        kernel/xapic.c         \
+        drivers/acpi.c         \
+        drivers/cga.c          \
+        drivers/pci.c          \
+        drivers/uart_porte9.c  \
+
+$(O)/hv6/entry.o               \
+$(O)/hv6/trap_entry.o          \
+$(O)/hv6/user/lib/trap_entry.o \
+$(O)/hv6/user/lib/usys.o : $(O)/include/uapi/machine/trap_assym.h
+
+HV6_KERNEL_OBJS := $(addprefix $(O)/,$(patsubst %.c,%.o,$(patsubst %.S,%.o,$(HV6_KERNEL_SRCS))))
+
+ifeq ($(USE_LL),1)
+$(O)/hv6/%.o: $(O)/hv6/%.ll
+	$(QUIET_CC_IR)$(LLVM_CC) -c -o $@ $<
+endif
+
+export PYTHONPATH := $(PYTHONPATH):irpy:$(O)/hv6/
+
+-include $(HV6_KERNEL_OBJS:.o=.d)
+
+$(HV6_KERNEL_OBJS): CFLAGS += -fno-stack-protector -I kernel -I hv6
+
+$(HV6_LLS): CFLAGS += -I kernel
+
+# include user specific makefile rules
+include hv6/user/Makefrag
+
+$(O)/hv6/%.asm: $(O)/hv6/%
+	$(QUIET_GEN)$(OBJDUMP) -S $< > $@
+
+# These should never be rebuilt.
+$(HV6_LINUX_UPROGS):
+	@:
+
+hv6: $(HV6_BIN) $(HV6_ASM) $(O)/hv6/ulib.asm $(O)/hv6/fs.img
+
+HV6_QEMUOPTS = $(QEMUOPTS) -drive file=$(O)/hv6/fs.img,format=raw,if=none,id=fs -device nvme,drive=fs,serial=hv6
+
+$(HV6_ELF): $(HV6_KERNEL_OBJS) $(KERNEL_LDS)
+	$(QUIET_LD)$(LD) -o $@ -T $(KERNEL_LDS) $(HV6_KERNEL_OBJS)
+
+hv6-qemu: hv6
+	$(QEMU) $(HV6_QEMUOPTS) -kernel $(HV6_BIN)
+
+hv6-qemu-iso: iso
+	$(QEMU) $(HV6_QEMUOPTS) -cdrom $(HV6_ISO)
+
+hv6-qemu-gdb: hv6
+	$(QEMU) $(HV6_QEMUOPTS) -S -kernel $(HV6_BIN)
+
+# workaround for gdb's "reply too long"
+hv6-gdb:
+	$(GDB) \
+	-ex "set arch i386:x86-64:intel" \
+	-ex "target remote 0.0.0.0:1234" \
+	-ex "symbol $(HV6_ELF)" \
+	-ex "b main" \
+	-ex "c" \
+	-ex "disconnect" \
+	-ex "set arch i386:x86-64" \
+	-ex "target remote 0.0.0.0:1234" \
+	-ex "c"
+
+HV6PY := $(O)/hv6/hv6py
+
+HV6PYLIB := $(wildcard hv6/spec/*.py)
+HV6PYLIB := $(addprefix $(HV6PY)/,$(HV6PYLIB:hv6/spec/%=%))
+
+HV6_SPEC := $(wildcard hv6/spec/kernel/*.py)
+HV6_SPEC += $(wildcard hv6/spec/kernel/spec/*.py)
+HV6_SPEC := $(addprefix $(HV6PY)/kernel/spec/,$(HV6_SPEC:hv6/spec/kernel/%=%))
+
+HV6_USER_SPEC := $(wildcard hv6/spec/user/*.py)
+HV6_USER_SPEC := $(addprefix $(HV6PY)/user/spec/,$(HV6_USER_SPEC:hv6/spec/user/%=%))
+
+HV6_KERNEL_IMPL := $(HV6PY)/kernel/impl.py
+
+$(HV6PY)/%.py: hv6/spec/%.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(Q)cp $^ $@
+
+$(HV6PY)/kernel/spec/%.py: hv6/spec/kernel/%.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(Q)cp $^ $@
+
+$(HV6PY)/kernel/spec/spec/%.py: hv6/spec/kernel/spec/%.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(Q)cp $^ $@
+
+$(HV6PY)/user/spec/%.py: hv6/spec/user/%.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(Q)cp $^ $@
+
+$(HV6_KERNEL_IMPL): $(O)/hv6/hv6.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(Q)cp $^ $@
+
+$(HV6PY): $(HV6PYLIB) $(HV6_SPEC) $(HV6_USER_SPEC) $(HV6_KERNEL_IMPL)
+	$(Q)find $(HV6PY) -type d -exec touch {}/__init__.py \;
+
+$(O)/hv6/hv6.ll: $(HV6_LLS)
+	$(QUIET_GEN)$(LLVM_LINK) -o $@ -S $^
+
+hv6-verify-syscall-%:
+	$(MAKE) hv6-verify -- -v --failfast HV6.test_$(patsubst hv6-verify-syscall-%,%,$@)
+
+hv6-verify: $(HV6PY)
+	$(QUIET_PY2)$(PY2) $(HV6PY)/kernel/spec/main.py $(ARGS)
+
+hv6-verify-par: $(HV6PY)
+	python2 scripts/pytest -v --duration=10 --full-trace -r fEsxX --color=auto -n=auto --boxed $(HV6PY)/kernel/spec/main.py::HV6 \
+                                                                               $(HV6PY)/kernel/spec/main.py::HV6TopLemmas \
+                                                                               $(HV6PY)/kernel/spec/main.py::HV6ImplInvs $(ARGS)
+
+hv6-verify-lo-par: $(HV6PY)
+	python2 scripts/pytest -v --duration=10 --full-trace -r fEsxX --color=auto -n=auto --boxed $(HV6PY)/kernel/spec/main.py::HV6 \
+                                                                               $(HV6PY)/kernel/spec/main.py::HV6ImplInvs $(ARGS)
+
+hv6-verify-hi-par: $(HV6PY)
+	python2 scripts/pytest -v --duration=10 --full-trace -r fEsxX --color=auto -n=auto --boxed $(HV6PY)/kernel/spec/main.py::HV6TopLemmas
+
+hv6-user-verify: $(HV6PY)
+	$(QUIET_PY2)$(PY2) $(HV6PY)/user/spec/main.py $(ARGS)
+
+hv6-test: hv6
+	$(QUIET_PY2)$(PY2) hv6/test.py -v
+
+hv6-stackcheck: $(O)/hv6.elf
+	$(OBJDUMP) --no-show-raw-insn -d $< | ./scripts/stackcheck.py
+
+hv6-ldcheck: $(O)/hv6.elf
+	$(NM) --numeric-sort --print-size $< | ./scripts/ldcheck.py
+
+$(O)/hv6/shared.py: $(O)/hv6/spec/hv6.py $(HV6_SPEC)
+	echo 'shareset = {}' > $@
+	rm -f $(O)/hv6/shared.lock
+	python2 scripts/pytest -x -v --full-trace -r fEsxX -n=auto $(O)/hv6/spec/main.py::HV6Accessed
+
+.PHONY: hv6 hv6-qemu hv6-qemu-gdb hv6-gdb hv6-bochs hv6-verify hv6-user-verify hv6-stackcheck 6-iso
+
+.SECONDARY: $(HV6_LLS)

@@ -1,0 +1,176 @@
+HV6_FS_SRCS :=                 \
+        hv6/user/fs/bio.c      \
+        hv6/user/fs/file.c     \
+        hv6/user/fs/fs.c       \
+        hv6/user/fs/ide.c      \
+        hv6/user/fs/inode.c    \
+        hv6/user/fs/log.c      \
+        hv6/user/fs/pipe.c     \
+        hv6/user/fs/uiommu.c   \
+        lib/console.c          \
+        drivers/kbd.c          \
+        drivers/membuf.c       \
+        drivers/uart_8250.c    \
+
+# use in-memory disk
+HV6_FS_SRCS +=                 \
+        hv6/user/fs/memdisk.c  \
+        hv6/user/fs/memfs.S    \
+
+# use nvme disk
+HV6_FS_SRCS +=                 \
+        hv6/user/fs/nvmedisk.c \
+
+HV6_INIT_SRCS :=               \
+        hv6/user/init.c        \
+        hv6/user/initcode.S    \
+        $(HV6_FS_SRCS)
+
+HV6_INIT_OBJS := $(addprefix $(O)/,$(patsubst %.c,%.o,$(patsubst %.S,%.o,$(HV6_INIT_SRCS))))
+
+HV6_ULIB_SRCS :=                  \
+        hv6/user/lib/exec.c       \
+        hv6/user/lib/fcntl.c      \
+        hv6/user/lib/fork.c       \
+        hv6/user/lib/linux.c      \
+        hv6/user/lib/printf.c     \
+        hv6/user/lib/socket.c     \
+        hv6/user/lib/trap.c       \
+        hv6/user/lib/trap_entry.S \
+        hv6/user/lib/ulib.c       \
+        hv6/user/lib/ulib_entry.S \
+        hv6/user/lib/ubrk.c       \
+        hv6/user/lib/umalloc.c    \
+        hv6/user/lib/readline.c   \
+        hv6/user/lib/usys.S       \
+
+HV6_ULIB_OBJS := $(addprefix $(O)/,$(patsubst %.c,%.o,$(patsubst %.S,%.o,$(HV6_ULIB_SRCS))))
+
+HV6_UPROGS :=                       \
+        $(O)/hv6/user/bench         \
+        $(O)/hv6/user/bounce        \
+        $(O)/hv6/user/cat           \
+        $(O)/hv6/user/cpio          \
+        $(O)/hv6/user/daytime       \
+        $(O)/hv6/user/echo          \
+        $(O)/hv6/user/dmesg         \
+        $(O)/hv6/user/fault         \
+        $(O)/hv6/user/freelist      \
+        $(O)/hv6/user/grep          \
+        $(O)/hv6/user/httpd         \
+        $(O)/hv6/user/httpget       \
+        $(O)/hv6/user/kill          \
+        $(O)/hv6/user/ls            \
+        $(O)/hv6/user/mkdir         \
+        $(O)/hv6/user/ns            \
+        $(O)/hv6/user/ps            \
+        $(O)/hv6/user/pstree        \
+        $(O)/hv6/user/readylist     \
+        $(O)/hv6/user/rm            \
+        $(O)/hv6/user/sh            \
+        $(O)/hv6/user/timer         \
+        $(O)/hv6/user/vmstat        \
+        $(O)/hv6/user/wc            \
+        $(O)/hv6/user/wttr          \
+        $(O)/hv6/user/vncd          \
+
+HV6_LINUX_UPROGS :=                 \
+        hv6/user/linux/bench_linux  \
+        hv6/user/linux/compile      \
+        hv6/user/linux/gzip         \
+        hv6/user/linux/hello        \
+        hv6/user/linux/hello.c      \
+        hv6/user/linux/hello.lua    \
+        hv6/user/linux/lua          \
+        hv6/user/linux/sha1sum      \
+        hv6/user/linux/tcc          \
+        hv6/user/linux/ter-x16n.psf \
+        web/d3.v4.min.js            \
+        web/jquery.min.js           \
+        web/sh.html                 \
+        web/pstree.html             \
+        web/memmap.html             \
+
+HV6_LWIP_SRCS :=                           \
+        hv6/user/lwip/core/init.c          \
+        hv6/user/lwip/core/def.c           \
+        hv6/user/lwip/core/dns.c           \
+        hv6/user/lwip/core/inet_chksum.c   \
+        hv6/user/lwip/core/ip.c            \
+        hv6/user/lwip/core/mem.c           \
+        hv6/user/lwip/core/memp.c          \
+        hv6/user/lwip/core/netif.c         \
+        hv6/user/lwip/core/pbuf.c          \
+        hv6/user/lwip/core/raw.c           \
+        hv6/user/lwip/core/stats.c         \
+        hv6/user/lwip/core/sys.c           \
+        hv6/user/lwip/core/tcp.c           \
+        hv6/user/lwip/core/tcp_in.c        \
+        hv6/user/lwip/core/tcp_out.c       \
+        hv6/user/lwip/core/timeouts.c      \
+        hv6/user/lwip/core/udp.c           \
+        hv6/user/lwip/core/ipv4/autoip.c   \
+        hv6/user/lwip/core/ipv4/dhcp.c     \
+        hv6/user/lwip/core/ipv4/etharp.c   \
+        hv6/user/lwip/core/ipv4/icmp.c     \
+        hv6/user/lwip/core/ipv4/igmp.c     \
+        hv6/user/lwip/core/ipv4/ip4_frag.c \
+        hv6/user/lwip/core/ipv4/ip4.c      \
+        hv6/user/lwip/core/ipv4/ip4_addr.c \
+        hv6/user/lwip/netif/ethernet.c     \
+
+HV6_LWIP_OBJS := $(addprefix $(O)/,$(HV6_LWIP_SRCS:.c=.o))
+
+HV6_UPROGS_OBJS := $(addsuffix .o,$(HV6_UPROGS))
+
+HV6_UPROGS_ASMS := $(addsuffix .asm,$(HV6_UPROGS))
+
+-include $(HV6_INIT_OBJS:.o=.d)
+-include $(HV6_ULIB_OBJS:.o=.d)
+-include $(HV6_UPROGS_OBJS:.o=.d)
+-include $(HV6_LWIP_OBJS:.o=.d)
+
+$(HV6_ULIB_OBJS): CFLAGS += -mcmodel=kernel
+
+$(HV6_INIT_OBJS) \
+$(HV6_ULIB_OBJS) \
+$(HV6_UPROGS_OBJS) \
+$(HV6_LWIP_OBJS): CFLAGS += -I hv6 -I hv6/user/lwip/include -I hv6/user/fs -I hv6/user -I hv6/user/linux
+
+$(O)/hv6/user/fs/memfs.o: $(O)/hv6/fs.img
+
+$(O)/hv6/fs.img: $(O)/hv6/user/fs/mkfs $(HV6_UPROGS) $(HV6_LINUX_UPROGS) README.md
+	$(QUIET_GEN)$(O)/hv6/user/fs/mkfs $@ $(HV6_UPROGS) $(HV6_LINUX_UPROGS) README.md > /dev/null
+
+$(O)/hv6/user/fs/mkfs: hv6/user/fs/mkfs.c
+	$(QUIET_GEN)$(HOST_CC) -o $@ $<
+
+$(O)/hv6/initbin.o: $(O)/hv6/init $(O)/hv6/ulib
+
+$(O)/hv6/initbin.o: CFLAGS += -I $(O)/hv6
+
+$(O)/hv6/ulib: $(HV6_ULIB_OBJS) hv6/user/lib/ulib.lds
+	$(QUIET_LD_USER)$(LD) -o $@ -T hv6/user/lib/ulib.lds $(HV6_ULIB_OBJS)
+
+$(O)/hv6/init: $(HV6_INIT_OBJS) $(O)/hv6/user/ustub.o
+	$(QUIET_LD_USER)$(LD) -o $@ $^
+
+$(O)/hv6/%: $(O)/hv6/%.o $(O)/hv6/user/ustub.o $(O)/hv6/crt0.o
+	$(QUIET_LD_USER)$(LD) -o $@ $^
+
+$(O)/hv6/user/ns: $(O)/hv6/liblwip.a $(O)/hv6/user/fs/uiommu.o
+
+$(O)/hv6/liblwip.a: $(HV6_LWIP_OBJS)
+	$(QUIET_AR)$(AR) rcs $@ $^
+
+$(O)/hv6/user/ustub.S: $(O)/hv6/ulib
+	$(QUIET_GEN)$(NM) -n $< | hv6/user/genustub.py > $@
+
+# ustub.S is generated under $(O)/
+$(O)/hv6/user/%.o: $(O)/hv6/user/%.S
+	$(QUIET_CC_USER)$(CC) -o $@ -c $(CFLAGS) $<
+
+$(O)/hv6/%.o: $(O)/hv6/%.S
+	$(QUIET_CC_USER)$(CC) -o $@ -c $(CFLAGS) $<
+
+.SECONDARY: $(HV6_UPROGS_OBJS) $(O)/hv6/user/ustub.o $(O)/hv6/crt0.o

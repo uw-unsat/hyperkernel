@@ -1,0 +1,8 @@
+#include "proc.c"
+#include "syscall.c"
+#include "vm.c"
+#include "device.c"
+#include "fd.c"
+#include "ipc.c"
+#include "sched.c"
+#include "invariants.c"

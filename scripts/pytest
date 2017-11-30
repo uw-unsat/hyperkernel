@@ -1,0 +1,23 @@
+#!/usr/bin/env python2
+
+# -*- coding: utf-8 -*-
+import re
+import sys
+
+from xdist.scheduler.load import LoadScheduling
+
+def check_schedule(self, node, duration=0):
+    if node.shutting_down:
+        return
+
+    if self.pending:
+        self._send_tests(node, 1)
+    self.log("num items waiting for node:", len(self.pending))
+
+
+LoadScheduling.check_schedule = check_schedule
+from pytest import main
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())

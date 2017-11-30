@@ -1,0 +1,10 @@
+/.gdb_history
+/config.mk
+/o.*
+/tags
+/.vscode
+.DS_Store
+*.sw[op]
+.cache/
+*.pyc
+irpy.prof

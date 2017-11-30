@@ -1,0 +1,106 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>memmap</title>
+</head>
+<body>
+<div id="chart"></div>
+<script src="d3.v4.min.js"></script>
+<script>
+const host = (location.protocol === "file:") ? "http://localhost:10080/" : "/";
+const cols = 64;
+const colors = {
+  "FREE": "white",
+  "PROC/DATA": "#756bb1",
+  "PML4": "#c6dbef",
+  "PDPT": "#9ecae1",
+  "PD": "#6baed6",
+  "PT": "#4292c6",
+  "FRAME": "#2171b5",
+  "IO/PML4": "#fee5d9",
+  "IO/PDPT": "#fcae91",
+  "IO/PD": "#fb6a4a",
+  "IO/PT": "#de2d26",
+  "IO/FRAME": "#a50f15",
+  "RESERVED": "gray"
+};
+
+/* based on http://bl.ocks.org/tjdecke/5558084 */
+
+const margin = { top: 20, right: 0, bottom: 20, left: 30 };
+const width = 800 - margin.left - margin.right;
+const gridSize = Math.floor(width / cols);
+
+function gx(i) {
+  return (i % cols) * gridSize;
+}
+
+function gy(i) {
+  return (Math.floor(i / cols) + Math.floor(i * 4 / 1024)) * gridSize;
+}
+
+function render(data) {
+  var svg = d3.select("#chart").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", gy(data.length) + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var pages = svg.selectAll(".page")
+      .data(data, function(d, i) { return i; })
+      .enter().append("rect")
+      ;
+
+  pages.attr("x", function(d, i) { return gx(i); })
+      .attr("y", function(d, i) { return gy(i); })
+      .attr("rx", 4)
+      .attr("ry", 4)
+      .attr("class", "bordered")
+      .attr("width", gridSize)
+      .attr("height", gridSize)
+      .style("fill", colors["RESERVED"])
+      ;
+
+  pages.append("title").text(function(d) {
+    return (d.name == undefined)
+      ? d.type
+      : d.type + "(" + d.name + "." + parseInt(d.pid) + ")"; });
+
+  pages.transition().duration(1000)
+      .style("fill", function(d) { return colors[d.type]; });
+}
+
+d3.request(host + "vmstat")
+  .post(function(error, xhr) {
+    var data = [];
+    xhr.response.trim().split('\n').forEach(function(line) {
+      var range, type, pid, name;
+      [range, type, pid, name] = line.trim().split(/\s+/);
+      var bounds = range.split('-'), lo, hi;
+      if (bounds.length == 1) {
+        lo = hi = parseInt(range);
+      } else {
+        lo = parseInt(bounds[0]);
+        hi = parseInt(bounds[1]);
+      }
+      
+      data = data.concat(Array(hi + 1 - lo).fill({
+        "type": type,
+        "pid": pid,
+        "name": name
+      }));
+    });
+    console.log(data);
+    render(data);
+  });
+</script>
+<style>
+rect.bordered {
+  stroke: #E6E6E6;
+  stroke-width:2px;   
+}
+</style>
+</body>
+</html>

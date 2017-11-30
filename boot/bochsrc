@@ -1,0 +1,8 @@
+cpu: model=$CPU, reset_on_triple_fault=0, count=$NR_CPUS
+megs: 1024
+ata0-slave: type=cdrom, path=$ISO, status=inserted
+boot: cdrom
+com1: enabled=1, mode=file, dev=/dev/stdout
+port_e9_hack: enabled=1
+#display_library: nogui
+#e1000: enabled=1, mac=52:54:00:12:34:56

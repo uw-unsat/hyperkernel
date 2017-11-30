@@ -1,0 +1,25 @@
+$(O)/kernel/initbin.o: $(O)/user/init.bin
+
+$(O)/kernel/initbin.o: CFLAGS += -I $(O)/user
+
+$(O)/kernel/svm_entry.o: $(O)/kernel/svm_assym.h
+
+$(O)/kernel/locore.o \
+$(O)/kernel/svm_entry.o \
+$(O)/kernel/vmx_entry.o \
+$(O)/user/entry.o \
+$(O)/user/trap_entry.o: $(O)/include/uapi/machine/trap_assym.h
+
+.SECONDARY: $(O)/kernel/svm_genassym.o $(O)/include/uapi/machine/trap_genassym.o
+
+# workaround for gdb's "reply too long"
+gdb:
+	$(GDB) \
+	-ex "set arch i386:x86-64:intel" \
+	-ex "target remote :1234" \
+	-ex "symbol $(KERNEL_ELF)" \
+	-ex "b main" \
+	-ex "c" \
+	-ex "disconnect" \
+	-ex "set arch i386:x86-64" \
+	-ex "target remote :1234"

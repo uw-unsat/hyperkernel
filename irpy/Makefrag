@@ -1,0 +1,101 @@
+#
+# Copyright 2017 Hyperkernel Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+LIBDIR		= $(shell "$(LLVM_CONFIG)" --libdir)
+LIBS		= $(shell "$(LLVM_CONFIG)" --libs)
+SYSLIBS		= $(shell "$(LLVM_CONFIG)" --system-libs)
+CXXFLAGS	= $(shell "$(LLVM_CONFIG)" --cxxflags)
+
+CLANG		= $(shell "$(LLVM_CONFIG)" --bindir)/clang
+
+IRPY_SRCS	:= $(wildcard irpy/compiler/*.cc)
+IRPY_OBJS	:= $(addprefix $(O)/,$(patsubst %.cc,%.o,$(IRPY_SRCS)))
+
+ifeq ($(PROFILE_IRPY), 1)
+IRPY_CFLAGS := -DPROFILER
+else
+IRPY_CFLAGS :=
+endif
+
+$(O)/irpy/%.o: irpy/%.cc
+	$(Q)$(MKDIR_P) $(@D)
+	$(QUIET_CXX)$(CXX) -o $@ -c $(CXXFLAGS) $(IRPY_CFLAGS) -Wall -g -O2 $<
+
+ifeq ($(PROFILE_IRPY), 1)
+IRPY_LDFLAGS := -Wl,--no-as-needed -lprofiler -Wl,--as-needed
+else
+IRPY_LDFLAGS :=
+endif
+
+irpy/compiler/irpy: $(IRPY_OBJS)
+	$(QUIET_CXX)$(CXX) $^ -L$(LIBDIR) $(LIBS) $(SYSLIBS) -g $(IRPY_LDFLAGS) -O2 -o "$@"
+
+# Testing stuff
+
+TEST_SRCS = $(wildcard irpy/test/*.c)
+TEST_LL_O = $(subst /test/,/o.test/,$(patsubst %.c,%.ll,$(TEST_SRCS)))
+TEST_LL  += $(patsubst %.ll,%_0.ll,$(TEST_LL_O))
+TEST_LL  += $(patsubst %.ll,%_1.ll,$(TEST_LL_O))
+TEST_LL  += $(patsubst %.ll,%_2.ll,$(TEST_LL_O))
+TEST_PY   = $(patsubst %.ll,%.py,$(TEST_LL))
+TEST_BIN  = $(patsubst %.ll,%,$(TEST_LL))
+
+LIBIRPY_PY := $(wildcard irpy/libirpy/*.py)
+
+TEST_LIBIRPY_PY := $(addprefix irpy/o.test/,$(LIBIRPY_PY:irpy/%=%))
+
+irpy/o.test/%_0.ll: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -g -mno-sse -mno-sse2 -nostdlib -O0 -S -emit-llvm "$^" -o "$@"
+
+irpy/o.test/%_1.ll: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -g -mno-sse -mno-sse2 -nostdlib -O1 -S -emit-llvm "$^" -o "$@"
+
+irpy/o.test/%_2.ll: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -g -mno-sse -mno-sse2 -nostdlib -O2 -S -emit-llvm "$^" -o "$@"
+
+irpy/o.test/%_0: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -O0 "$^" -o "$@"
+
+irpy/o.test/%_1: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -O1 "$^" -o "$@"
+
+irpy/o.test/%_2: irpy/test/%.c
+	$(Q)$(MKDIR_P) $(@D)
+	$(CLANG) -O2 "$^" -o "$@"
+
+irpy/o.test/%.py: irpy/o.test/%.ll irpy/compiler/irpy
+	$(Q)$(MKDIR_P) $(@D)
+	./irpy/compiler/irpy "$<" > "$@"
+
+irpy/o.test/test.py: irpy/test/test.py
+	$(Q)$(MKDIR_P) $(@D)
+	cp $^ $@
+
+irpy/o.test/libirpy/%.py: irpy/libirpy/%.py
+	$(Q)$(MKDIR_P) $(@D)
+	$(LN_S) -f $(realpath $^) $@
+
+irpy/test: irpy/o.test/test.py $(TEST_LIBIRPY_PY) $(TEST_LL) $(TEST_PY) $(TEST_BIN)
+	cd irpy/o.test && python2 test.py $(ARGS)
+
+.SECONDARY: $(TEST_LL)
+
+.PHONY: irpy/test

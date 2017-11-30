@@ -1,0 +1,113 @@
+<!doctype html>
+
+<!--
+Copyright 2017 Hyperkernel Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>sh</title>
+</head>
+
+<body>
+<div id="terminal">
+</div>
+<div id="terminal-footer"><span id="prompt">$ </span><span id="input"></span><span>▌</span></div>
+</body>
+</html>
+
+<script src="jquery.min.js"></script>
+
+<script>
+const host = (location.protocol === "file:") ? "http://localhost:10080/" : "/";
+
+/* https://en.wikipedia.org/wiki/ANSI_escape_code#Colors */
+function ascii_color(c) {
+  var rgb = [255, 255, 255];
+  c = parseInt(c);
+  if (c >= 16 && c < 232) {
+    rgb = [(c - 16) / 36, ((c - 16) % 36) / 6, (c - 16) % 6]
+          .map(function(e, i) { return Math.floor(e) * 0x33; });
+  } else if (c >= 232 && c < 256) {
+    var gray = Math.floor((c - 232) * (255 / 24));
+    rgb = [gray, gray, gray];
+  }
+  return "rgb(" + rgb.join(", ") + ")";;
+}
+
+function exec(cmd) {
+  $.post(host + cmd, function(data) {
+    data = data.split('\n').map(function(s, i) {
+      return s.replace(/\t/g, function(match, offset) {
+        return ' '.repeat(8 - offset % 8);
+      });
+    }).join('<br>');
+    data = data.replace(/ /g, "&nbsp;")
+               .replace(/\x1b\[0m/g, "</span>")
+               .replace(/\x1b\[38;5;([0-9]+)(;1)?m/g, function(match, capture) {
+                          return '<span style="color:' + ascii_color(capture) + '">';
+                        })
+               .replace(/\x1b\[1m/g, "")
+               ;
+    $("#terminal").append(data);
+    $("#prompt").show();
+    window.scrollTo(0, document.body.scrollHeight);
+  });
+}
+
+$(document).keydown(function(e) {
+  var input = $("#input");
+  var text = $.trim(input.text());
+  switch (e.keyCode) {
+  case 8:   /* backspace */
+    if (text.length)
+      input.text(text.substring(0, text.length - 1));
+    break;
+  case 13: /* enter */
+    $("#terminal").append($("#prompt").text() + text + "<br>");
+    input.text("");
+    if (text.length) {
+      $("#prompt").hide();
+      exec(text);
+    }
+    window.scrollTo(0, document.body.scrollHeight);
+    break;
+  }
+});
+
+$(document).keypress(function(e) {
+  /* for firefox */
+  if (e.charCode === 0)
+    return;
+  $("#input").append(String.fromCharCode(e.charCode));
+});
+
+exec("dmesg");
+
+</script>
+
+<style>
+body {
+  font-family: "Consolas", "Inconsolata", "Ubuntu Mono", monospace;
+  background: black;
+  color: white;
+  line-height: 1;
+}
+
+div#terminal-footer {
+  margin-bottom: 50px;
+}
+</style>
