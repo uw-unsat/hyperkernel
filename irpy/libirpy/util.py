@@ -21,6 +21,7 @@ import z3
 
 import itypes
 
+
 if False:
     # A hook swhich spawns an ipdb debugger if an uncaught exception is thrown
     from IPython.core import ultratb
@@ -79,12 +80,21 @@ def _solver_copy(self, memo=None):
     s.add(z3.parse_smt2_string(self.to_smt2()))
     return s
 
+
 # In case of emergencies
-# setattr(z3.Solver, '__copy__', _solver_copy)
-# setattr(z3.Solver, '__deepcopy__', _solver_copy)
+# Should probably not be used
+def enable_solver_copy():
+    setattr(z3.Solver, '__copy__', _solver_copy)
+    setattr(z3.Solver, '__deepcopy__', _solver_copy)
 
 
-def equal(a, b):
+def definitely_equal(a, b):
+    """
+    A conservative equals function. Must return a Python boolean.
+    Returns True only if we can definitely determine that a and b are equal.
+
+    A value of False only means they are potentially not equal.
+    """
     if type(a) != type(b):
         return False
     container_types = [dict, list, tuple]
@@ -100,6 +110,7 @@ def equal(a, b):
 
 
 def is_true(cond):
+    """Same as z3.is_true but supports python booleans"""
     if hasattr(cond, 'sexpr'):
         return z3.is_true(simplify(cond))
     assert isinstance(cond, bool)
@@ -107,6 +118,7 @@ def is_true(cond):
 
 
 def is_false(cond):
+    """Same as z3.is_false but supports python booleans"""
     if hasattr(cond, 'sexpr'):
         return z3.is_false(simplify(cond))
     assert isinstance(cond, bool)
@@ -150,7 +162,7 @@ def If(cond, a, b):
         assert a.size() == b.size(
         ), "Can not ite types of different size {} v. {}".format(a.size(), b.size())
 
-    if equal(a, b):
+    if definitely_equal(a, b):
         return a
 
     if hasattr(a, 'ite'):
@@ -468,8 +480,8 @@ def _coerce_exprs(a, b, ctx=None):
     b = s.cast(b)
     return (a, b)
 
-# From https://stackoverflow.com/questions/22568867/z3-bitvector-overflow-checking-from-python
 
+# From https://stackoverflow.com/questions/22568867/z3-bitvector-overflow-checking-from-python
 def bvadd_no_overflow(a, b, signed):
     if a.size() != b.size():
         raise Exception(
