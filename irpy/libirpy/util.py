@@ -178,7 +178,7 @@ def If(cond, a, b):
 
     if isinstance(a, list):
         a = tuple(a)
-    if isinstance(a, list):
+    if isinstance(b, list):
         b = tuple(b)
 
     if isinstance(a, tuple) and isinstance(b, tuple):
