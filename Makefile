@@ -7,6 +7,8 @@ NR_CPUS      ?= 1
 QEMU_ACCEL   ?= kvm:tcg
 QEMU_CPU     ?= max
 QEMU_DISPLAY ?= none
+# some Ubuntu doesn't have e1000e
+QEMU_NIC     ?= e1000
 BOCHS_CPU    ?= broadwell_ult
 IOMMU        ?= intel-iommu
 USE_LL       ?= 0
@@ -106,7 +108,7 @@ QEMUOPTS     += -smp cpus=$(NR_CPUS)
 QEMUOPTS     += -device isa-debug-exit
 QEMUOPTS     += -debugcon file:/dev/stdout
 QEMUOPTS     += -netdev user,id=net0,hostfwd=tcp::10007-:7,hostfwd=tcp::10080-:80,hostfwd=tcp::5900-:5900
-QEMUOPTS     += -device e1000,netdev=net0 -object filter-dump,id=filter0,netdev=net0,file=$(O)/qemu.pcap
+QEMUOPTS     += -device $(QEMU_NIC),netdev=net0 -object filter-dump,id=filter0,netdev=net0,file=$(O)/qemu.pcap
 QEMUOPTS     += -device $(IOMMU),intremap=on
 
 ifdef QEMUEXTRA
