@@ -1,7 +1,7 @@
 # Hyperkernel
 
 See recent updates and contact information at:
-https://locore.cs.washington.edu/hyperkernel/
+https://unsat.cs.washington.edu/projects/hyperkernel/
 
 This is a playground with kernel designs and ideas for formal
 verification.  Don't use it for production.
