@@ -19,3 +19,12 @@
 #define X8_F "02x"
 
 #define LWIP_RAND rdtsc
+
+/* some platforms do not have inttypes.h */
+#define LWIP_NO_INTTYPES_H 1
+#define U16_F "hu"
+#define S16_F "hd"
+#define X16_F "hx"
+#define U32_F "u"
+#define S32_F "d"
+#define X32_F "x"

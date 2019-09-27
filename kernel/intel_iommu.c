@@ -61,7 +61,7 @@ void intel_iommu_init(void)
 
     /* preallocate context tables */
     for (i = 0; i < 256; ++i)
-        root_table[i].r1 = DMAR_ROOT_R1_P | (uintptr_t)(dev_table + i);
+        root_table[i].r1 = DMAR_ROOT_R1_P | (uintptr_t)(dev_table + 256 * i);
 
     for (; hdr < end; hdr = (void *)hdr + hdr->length) {
         struct acpi_dmar_hardware_unit *drhd;

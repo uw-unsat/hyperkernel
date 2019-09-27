@@ -629,7 +629,7 @@ static int e1000_transmit(const char *buf, size_t len)
     assert(len <= DATA_MAX, "len too large");
 
     tail = e1000_read32(E1000_TDT);
-    assert(tail < RX_RING_SIZE, "invalid TX tail");
+    assert(tail < TX_RING_SIZE, "invalid TX tail");
     /*
      * [E1000 3.3.3.2] Check if this descriptor is done.
      * According to [E1000 13.4.39], using TDH for this is not

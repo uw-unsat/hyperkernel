@@ -68,7 +68,7 @@ LLVM_PREFIX  :=
 else
 LLVM_PREFIX  := "$(shell '$(LLVM_CONFIG)' --bindir)/"
 endif
-LLVM_CC      += $(LLVM_PREFIX)clang -target $(ARCH)-linux-gnu -Wno-initializer-overrides
+LLVM_CC      := $(LLVM_PREFIX)clang -target $(ARCH)-linux-gnu -Wno-initializer-overrides
 LLVM_LINK    := $(LLVM_PREFIX)llvm-link
 
 KERNEL_LDS   := $(O)/kernel/kernel.lds
